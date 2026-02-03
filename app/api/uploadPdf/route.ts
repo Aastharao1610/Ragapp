@@ -11,6 +11,7 @@ import { desc, eq } from "drizzle-orm";
 import { Pinecone } from "@pinecone-database/pinecone";
 import { groq } from "@/lib/groq";
 import { chats } from "@/lib/schema";
+import { generateTitle } from "@/lib/generateTitle";
 
 export const runtime = "nodejs";
 
@@ -25,29 +26,7 @@ function cleanPdfText(text: string) {
     .trim();
 }
 
-async function generateTitleFromPdf(text: string) {
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    messages: [
-      {
-        role: "system",
-        content:
-          "Generate a short meaningful chat title from this document. Max 6 words. No punctuation.",
-      },
-      {
-        role: "user",
-        content: text.slice(0, 1500),
-      },
-    ],
-    temperature: 0.3,
-    max_tokens: 15,
-  });
 
-  return (
-    completion.choices[0]?.message?.content?.replace(/["'.]/g, "").trim() ||
-    "Uploaded Document"
-  );
-}
 
 function parsePdfOutsideNext(buffer: Buffer): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -109,7 +88,7 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (!chat?.title || chat.title === "New Chat") {
-      const title = await generateTitleFromPdf(text);
+      const title = await generateTitle(chatId, text);
 
       await db.update(chats).set({ title }).where(eq(chats.id, chatId));
 

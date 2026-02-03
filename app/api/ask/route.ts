@@ -8,79 +8,16 @@ import { auth } from "@clerk/nextjs/server";
 import { streamText, stepCountIs } from "ai";
 import { groq as aiGroq } from "@ai-sdk/groq";
 import { Pinecone } from "@pinecone-database/pinecone";
+import { runTavilySearch } from "@/lib/tavilySearch";
+import { generateSearchQuery } from "@/lib/generateSearchQuery";
+import { needsWebSearch } from "@/lib/needWebSearch";
+import { generateTitle } from "@/lib/generateTitle";
 
-async function runTavilySearch(query: string) {
-  const res = await fetch("https://api.tavily.com/search", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.TAVIY_API_KEY}`,
-    },
-    body: JSON.stringify({
-      query,
-      max_results: 5,
-    }),
-  });
-
-  const data = await res.json();
-  return data?.results || [];
-}
-
-async function generateSearchQuery(input: string) {
-  const res = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    temperature: 0,
-    messages: [
-      {
-        role: "system",
-        content: `
-You generate precise web search queries.
-
-Rules:
-- Extract key entities (names, places, dates, products).
-- Remove filler and conversational words.
-- Keep under 15 words.
-- Optimize for factual retrieval.
-Return ONLY the query text.
-`,
-      },
-      { role: "user", content: input },
-    ],
-  });
-
-  return res.choices[0]?.message?.content?.trim() || input;
-}
-
-async function needsWebSearch(input: string) {
-  const res = await groq.chat.completions.create({
-    model: "llama-3.1-8b-instant",
-    temperature: 0,
-    messages: [
-      {
-        role: "system",
-        content: `
-You are a classifier.
-Return ONLY JSON.
-
-Return {"needsSearch": true} if answering requires current, factual, or real-world data.
-Return {"needsSearch": false} if it can be answered from general knowledge.
-`,
-      },
-      { role: "user", content: input },
-    ],
-  });
-
-  try {
-    return (
-      JSON.parse(res.choices[0].message.content || "{}").needsSearch === true
-    );
-  } catch {
-    return false;
-  }
-}
 
 export async function POST(req: Request) {
+  console.log("Api of ask called ")
   const { userId } = await auth();
+  
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -97,6 +34,8 @@ export async function POST(req: Request) {
     question?.trim() ||
     "Please summarize the uploaded document clearly and concisely.";
 
+
+    generateTitle(chatId ,finalQuestion)
   if (/^(hi|hello|hey|hii|hiii)$/i.test(finalQuestion.trim())) {
     const greeting = "Hi! 😊 How can I help you today?";
 

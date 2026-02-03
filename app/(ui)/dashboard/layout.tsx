@@ -6,9 +6,10 @@ import ChatMessages from "@/components/ChatMessages/ChatMessages";
 import Input from "@/components/Input/Input";
 import { useState, useRef, useEffect } from "react";
 import { Menu } from "lucide-react";
-import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import type { Message } from "@/components/ChatMessages/ChatMessages";
+import { useAuth } from "@clerk/nextjs";
+
 
 export default function DashboardLayout({
   children,
@@ -23,12 +24,14 @@ export default function DashboardLayout({
 
   const sidebarRef = useRef<HTMLDivElement | null>(null);
 
-  const { isLoaded, isSignedIn } = useUser();
+  const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
+  console.log(isSignedIn , "isSIGENDDDDINNNN")
   console.log("📊 DASHBOARD RENDER:", {
     isLoaded,
     isSignedIn,
   });
+  
 
   useEffect(() => {
     // console.log("📊 DASHBOARD EFFECT:", { isLoaded, isSignedIn });
@@ -71,6 +74,8 @@ export default function DashboardLayout({
     setChatId(id);
     const res = await fetch(`/api/messages/${id}`);
     const data = await res.json();
+    console.log(data , "dataaa")
+    
     setMessages(data);
 
     if (window.innerWidth < 768) {
@@ -78,11 +83,14 @@ export default function DashboardLayout({
     }
   };
 
+
   const createNewChat = async () => {
     const res = await fetch("/api/chat", { method: "POST" });
+    console.log(res , "response of chat")
     if (!res.ok) return;
 
     const data = await res.json();
+    console.log(data , "dataaa")
     setMessages([]);
     setChatId(data.id);
     setChatRefreshKey((prev) => prev + 1);
@@ -121,14 +129,14 @@ export default function DashboardLayout({
       {/* Sidebar wrapper with ref */}
       <div ref={sidebarRef}>
         <Sidebar
+         authReady={isLoaded && isSignedIn}
           onNewChat={saveDraft}
           isOpen={isSidebarOpen}
           onToggle={toggleSidebar}
           activeChatId={chatId}
           onSelectChat={loadChat}
           // onNewChat={createNewChat}
-          refreshKey={chatRefreshKey}
-          authReady={isLoaded && isSignedIn}
+          refreshKey={chatRefreshKey} 
           onDelete={handleDeleteChat}
         />
       </div>

@@ -6,8 +6,11 @@ import Link from "next/link";
 import { ArrowRight, Database, MessageSquare, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useAuth } from "@clerk/nextjs";
 
 export default function Home() {
+  const auth =useAuth()
+  console.log("CLIENT AUTH" ,auth)
   const { isSignedIn, isLoaded, user } = useUser();
   // const router = useRouter();
 
@@ -16,15 +19,7 @@ export default function Home() {
     isSignedIn,
     userId: user?.id,
   });
-  // useEffect(() => {
-  //   console.log("🏠 HOME EFFECT:", { isLoaded, isSignedIn });
-  //   if (isLoaded) return;
-  //   if (isSignedIn) {
-  //     console.log("⏳ HOME WAITING FOR CLERK");
-  //     router.replace("/dashboard");
-  //   }
-  // }, [isLoaded, isSignedIn]);
-  // if (!isLoaded) return null;
+ 
   return (
     <div className="min-h-screen  text-slate-900 selection:bg-indigo-100">
       <Header />
@@ -43,13 +38,6 @@ export default function Home() {
             instantly.
           </p>
 
-          {/* <div className="flex items-center gap-4">
-            <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-              <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-semibold cursor-pointer transition-all shadow-lg shadow-indigo-200">
-                Get Started <ArrowRight size={18} />
-              </button>
-            </SignInButton>
-          </div> */}
         </div>
       </main>
     </div>

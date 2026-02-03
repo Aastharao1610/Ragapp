@@ -43,6 +43,13 @@
       "when": 1768301648184,
       "tag": "0005_tearful_captain_universe",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770103856683,
+      "tag": "0006_chubby_firebird",
+      "breakpoints": true
     }
   ]
 }

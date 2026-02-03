@@ -3,11 +3,12 @@ import { db } from "@/lib/db";
 import { users } from "../../../lib/schema";
 import { eq } from "drizzle-orm";
 import { auth, currentUser } from "@clerk/nextjs/server";
-
+console.log("HELLO")
 export async function POST(req: Response) {
   console.log("🔥 /api/auth HIT");
-  const { userId } = await auth();
+  const { userId } = auth();
 
+  console.log("auth() userId",userId)
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -15,6 +16,7 @@ export async function POST(req: Response) {
   if (!clerkUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
+  console.log(clerkUser , "ClerkUser")
   const existingUser = await db
     .select()
     .from(users)
