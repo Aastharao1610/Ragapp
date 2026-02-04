@@ -10,6 +10,14 @@
 
 import { pgTable, text, timestamp, uuid, vector } from "drizzle-orm/pg-core";
 
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),          // uuid
+  userId: text("user_id").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+});
+
 /* ===================== USERS ===================== */
 
 export const users = pgTable("users", {
@@ -46,12 +54,23 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const documentChunks = pgTable("document_chunks", {
-  id: uuid("id").primaryKey().defaultRandom(),
+
+export const documents = pgTable("documents", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
   chatId: uuid("chat_id")
     .references(() => chats.id, { onDelete: "cascade" })
     .notNull(),
-  content: text("content").notNull(),
-  embedding: vector("embedding", { dimensions: 768 }),
+
+  userId: text("user_id").notNull(),
+
+  fileName: text("file_name").notNull(),
+
+  fileUrl: text("file_url").notNull(), // 👈 Cloudinary URL
+
+  cloudinaryId: text("cloudinary_id").notNull(),
+
+  status: text("status").notNull().default("uploaded"),
+
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

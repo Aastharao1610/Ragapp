@@ -50,6 +50,13 @@
       "when": 1770103856683,
       "tag": "0006_chubby_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1770202168346,
+      "tag": "0007_freezing_jamie_braddock",
+      "breakpoints": true
     }
   ]
 }

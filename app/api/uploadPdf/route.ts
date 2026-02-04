@@ -1,64 +1,21 @@
 import { NextResponse } from "next/server";
-import { spawn } from "child_process";
-import fs from "fs";
-import path from "path";
 import { chunkText } from "@/lib/chunkText";
-import { embedText } from "@/lib/embedding";
 import { db } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 import { messages } from "@/lib/schema"; // Removed documentChunks as we use Pinecone now
-import { desc, eq } from "drizzle-orm";
-import { Pinecone } from "@pinecone-database/pinecone";
-import { groq } from "@/lib/groq";
+import {  eq } from "drizzle-orm";
 import { chats } from "@/lib/schema";
 import { generateTitle } from "@/lib/generateTitle";
-
+import { Document } from "@langchain/core/documents";
+import { getVectorStore } from "@/lib/langchain/vectorStore";
+import { parsePdfOutsideNext } from "@/lib/parsePdfOutside";
+import { cleanPdfText } from "@/lib/CleanPdf";
+import { uploadPdfToCloudinary } from "@/lib/langchain/uploadCloudinary";
+import { documents } from "@/lib/schema";
 export const runtime = "nodejs";
 
-function cleanPdfText(text: string) {
-  return text
-    .replace(/\r\n/g, "\n")
-    .replace(/\n{2,}/g, "\n\n")
-    .replace(/-\n/g, "")
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, " ")
-    .replace(/[^\x20-\x7E]+/g, "")
-    .trim();
-}
-
-
-
-function parsePdfOutsideNext(buffer: Buffer): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const tempPath = path.join(process.cwd(), `temp-${Date.now()}.pdf`);
-    fs.writeFileSync(tempPath, buffer);
-
-    const proc = spawn("node", ["pdf-worker/run.cjs", tempPath]);
-
-    let output = "";
-    let error = "";
-
-    proc.stdout.on("data", (d) => (output += d.toString()));
-    proc.stderr.on("data", (e) => (error += e.toString()));
-
-    proc.on("close", (code) => {
-      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
-      if (code !== 0) {
-        console.error("PDF worker error:", error);
-        reject(new Error("PDF parsing failed"));
-      } else {
-        resolve(output);
-      }
-    });
-  });
-}
-
-// --- Main Route ---
 
 export async function POST(req: Request) {
-  const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-  const index = pc.index("ragapp");
-
   try {
     const { userId } = await auth();
     if (!userId)
@@ -76,10 +33,24 @@ export async function POST(req: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const uploadResult = await uploadPdfToCloudinary(
+  buffer,
+  (file as File).name
+);
+
+await db.insert(documents).values({
+  chatId,
+  userId,
+  fileName: (file as File).name,
+  fileUrl: uploadResult.url,          // 👈 Cloudinary URL
+  cloudinaryId: uploadResult.publicId,
+  status: "uploaded",
+});
 
     // 1. Extract and Clean Text
     const rawText = await parsePdfOutsideNext(buffer);
     const text = cleanPdfText(rawText);
+
     // 🏷️ Auto-generate chat title from PDF
     const [chat] = await db
       .select({ title: chats.title })
@@ -114,38 +85,39 @@ export async function POST(req: Request) {
 
     // 3. Chunk and Embed
     const chunks = chunkText(text);
-    const embeddings = await Promise.all(
-      chunks.map(async (chunk) => {
-        const embedding = await embedText(chunk);
-        return {
-          content: chunk,
-          values: embedding as number[],
-        };
-      }),
-    );
+   
+    const docs = chunks.map(
+  (chunk) =>
+    new Document({
+      pageContent: chunk,
+      metadata: {
+        chatId,
+        source: uploadResult.url,   // 👈 Cloudinary URL
+        fileName: (file as File).name,
+      },
+    })
+);
+console.log("Sending to pinecone...")
+try {
+    const vectorStore = await getVectorStore(chatId);
+    await vectorStore.addDocuments(docs); // <--- THIS IS THE MISSING "SEND" BUTTON
+    console.log("PINECOne UPSERT SUCCESSFUL");
+} catch (pineconeErr) {
+    console.error(" Pinecone Upsert Error:", pineconeErr);
+    throw pineconeErr; // This ensures it hits your catch block
+}
+    
 
-    // 4. Sync to Pinecone (Skipping SQL insert for vectors to avoid parameter limits)
-    try {
-      const vectors = embeddings.map((item, idx) => ({
-        id: `${chatId}-${idx}-${Date.now()}`, // Unique ID
-        values: item.values,
-        metadata: {
-          chatId,
-          content: item.content, // Crucial for retrieval
-        },
-      }));
+    console.log("EMBEDDED DOCS COUNT:", docs.length);
+console.log("NAMESPACE:", chatId);
 
-      // Pinecone handles batches efficiently
-      await index.upsert(vectors);
-      console.log("🌲 Successfully synced to Pinecone");
-    } catch (pcError) {
-      console.error("Pinecone Sync Error:", pcError);
-      return NextResponse.json(
-        { error: "Vector DB sync failed" },
-        { status: 500 },
-      );
-    }
+    await db
+  .update(documents)
+  .set({ status: "embedded" })
+  .where(eq(documents.chatId, chatId));
 
+
+    
     return NextResponse.json({
       success: true,
       chunks: chunks.length,

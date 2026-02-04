@@ -6,7 +6,7 @@ import { auth } from "@clerk/nextjs/server";
 
 export const runtime ='nodejs'; 
 export async function GET(req :any) {
-console.log("🍪 RAW COOKIE HEADER:", req.headers.get("cookie"));
+// console.log("🍪 RAW COOKIE HEADER:", req.headers.get("cookie"));
 
   const { userId ,sessionId } =await auth();
   console.log("/getchats called")
