@@ -7,8 +7,9 @@ export function parsePdfOutsideNext(buffer: Buffer): Promise<string> {
     const tempPath = path.join(process.cwd(), `temp-${Date.now()}.pdf`);
     fs.writeFileSync(tempPath, buffer);
 
-    const proc = spawn("node", ["pdf-worker/run.cjs", tempPath]);
-
+    // const proc = spawn("node", ["pdf-worker/run.cjs", tempPath]);
+    const workerPath = path.resolve(process.cwd(), "pdf-worker", "run.cjs");
+    const proc = spawn("node", [workerPath, tempPath]);
     let output = "";
     let error = "";
 
