@@ -7,7 +7,6 @@ import { Trash2 } from "lucide-react";
 import { Pencil } from "lucide-react";
 import { createPortal } from "react-dom";
 
-
 type Chat = {
   id: string;
   title: string | null;
@@ -50,13 +49,11 @@ const Sidebar = ({
     const loadChats = async () => {
       try {
         const res = await fetch("/api/getChats", {
-          method : "GET",
+          method: "GET",
           credentials: "include",
           cache: "no-store",
-
-
         });
-console.log(res , "response of api get chat")
+        console.log(res, "response of api get chat");
         if (!res.ok) {
           console.error("❌ getChats failed:", res.status);
           return;

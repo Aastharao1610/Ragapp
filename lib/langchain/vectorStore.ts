@@ -11,7 +11,7 @@ export async function getVectorStore(namespace: string) {
   const index = pc.index("airag-gemini-768"); // IMPORTANT: 768 index
 
   const stats = await index.describeIndexStats();
-  console.log("📊 Pinecone Index Stats:", JSON.stringify(stats.namespaces));
+  console.log("📊 Pinecone Index Stats:",          JSON.stringify(stats.namespaces));
   console.log("🔍 Looking for Namespace:", namespace);
   return new PineconeStore(embeddings, {
     pineconeIndex: index,
